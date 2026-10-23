@@ -1,0 +1,7 @@
+numpy
+pyarrow
+pandas
+sqlalchemy
+psycopg2-binary
+scikit-learn
+catboost
