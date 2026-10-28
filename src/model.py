@@ -328,4 +328,5 @@ def run_model_pipeline(processed_dir: str = "data/processed", model_dir: str = "
                 f"[Blue: {res['p_a_on_blue']*100:4.1f}%, Red: {res['p_a_on_red']*100:4.1f}%]"
             )
 
-run_model_pipeline()
+if __name__ == "__main__":
+    run_model_pipeline()
