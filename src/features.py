@@ -205,7 +205,7 @@ def merge_matchup_features(matchups_elo_df: pd.DataFrame, team_features_df: pd.D
 def run_features_pipeline(processed_dir: str = "data/processed"):
     team_path = os.path.join(processed_dir, "team_games.parquet")
     elo_path = os.path.join(processed_dir, "matchups_with_elo.parquet")
-    ratings_path = os.path.join(processed_dir, "current_team_ratings_parquet")
+    ratings_path = os.path.join(processed_dir, "current_team_ratings.parquet")
 
     if not (os.path.exists(team_path) and os.path.exists(elo_path)):
         raise FileNotFoundError("Missing input Parquet files. RUN src/ingest.py and src/elo.py first.")
@@ -224,7 +224,7 @@ def run_features_pipeline(processed_dir: str = "data/processed"):
     if os.path.exists(ratings_path):
         ratings_df = pd.read_parquet(ratings_path)
         latest_profiles_df = latest_profiles_df.merge(
-            ratings_df[["teamname", "region", "elo_rating", "game_played"]],
+            ratings_df[["teamname", "region", "elo_rating", "games_played"]],
             on="teamname",
             how="inner"
         ).sort_values("elo_rating", ascending=False)
