@@ -24,6 +24,8 @@ DEFAULT_REGIONAL_SLOTS = {
     "LTA S": 1,
 }
 
+INTERNATIONAL_LEAGUES = {"MSI", "WLDs", "WCS"}
+
 def select_tournament_field(profiles_df: pd.DataFrame, custom_teams: list[str] | None = None) -> pd.DataFrame:
     """
     Selects the 16 tournament teams and assigns Draw Pools (pool 1 to pool 4).
@@ -342,9 +344,51 @@ def generate_crustal_ball_predictions(
         ].head(8).round(3).to_string()
     )
 
-    # Highest win rate champion (Minimum 5 picks among qualified teams)
-    high_vol_champs = picks_stats[picks_stats["picks"] >= 5].sort_values("win_rate", ascending=False)
-    print("\n--- Top 5 Highest win-rate champions (min 5 picks) ---")
+    # Champion win rates use international matches only to avoid regional-only picks biasing the results.
+    international_team_df = recent_team_df[
+        recent_team_df["league"].isin(INTERNATIONAL_LEAGUES)
+    ]
+    international_game_ids = international_team_df["gameid"].unique()
+    international_player_df = recent_player_df[
+        recent_player_df["gameid"].isin(international_game_ids)
+    ]
+    international_game_count = international_team_df["gameid"].nunique()
+    international_picks_stats = (
+        international_player_df.groupby("champion")
+        .agg(
+            picks=("gameid", "count"),
+            wins=("result", "sum"),
+        )
+    )
+    international_picks_stats["win_rate"] = (
+        international_picks_stats["wins"] / international_picks_stats["picks"]
+    )
+
+    international_ban_cols = [
+        column for column in ["ban1", "ban2", "ban3", "ban4", "ban5"]
+        if column in international_team_df.columns
+    ]
+    if international_ban_cols:
+        international_bans = pd.concat(
+            [international_team_df[column] for column in international_ban_cols]
+        ).dropna()
+        international_ban_counts = international_bans.value_counts()
+    else:
+        international_ban_counts = pd.Series(dtype=int)
+    international_picks_stats["bans"] = (
+        international_picks_stats.index.map(international_ban_counts).fillna(0).astype(int)
+    )
+    international_picks_stats["presence"] = (
+        international_picks_stats["picks"] + international_picks_stats["bans"]
+    ) / international_game_count if international_game_count else 0
+
+    high_vol_champs = international_picks_stats[
+        international_picks_stats["picks"] >= 5
+    ].sort_values("win_rate", ascending=False)
+    print(
+        f"\n--- Top 5 International champion win rates "
+        f"(min 5 picks; {international_game_count} games) ---"
+    )
     print(high_vol_champs[["picks", "wins", "win_rate", "presence"]].head(5).round(3).to_string())
 
     # 2. Tournament Event Count Forecast (Poisson Simulation across ~80 maps)
